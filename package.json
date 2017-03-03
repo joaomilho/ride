@@ -1,0 +1,28 @@
+{
+  "name": "ride",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "sagui build",
+    "dist": "sagui dist",
+    "start": "sagui develop --port 3000",
+    "test": "sagui test",
+    "test:lint": "sagui test:lint",
+    "test:typecheck": "sagui test:typecheck",
+    "test:unit": "sagui test:unit --coverage",
+    "test:unit:watch": "sagui test:unit --watch"
+  },
+  "dependencies": {
+    "d3": "^4.7.1",
+    "flyd": "^0.2.4",
+    "flyd-filter": "^1.0.2",
+    "hammer-touchemulator": "^0.0.2",
+    "hammerjs": "^2.0.8",
+    "ramda": "^0.23.0",
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2",
+    "react-flyd": "^0.2.1",
+    "sagui": "^8.0.2"
+  }
+}
