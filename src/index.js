@@ -1,9 +1,11 @@
 
 /** @jsx h */
 import { h } from 'react-flyd'
-import { stream, scan, map } from 'flyd'
+import { merge, stream, scan, map } from 'flyd'
 import mergeAll from 'flyd/module/mergeall'
 import filter from 'flyd/module/filter'
+import flatMap from 'flyd/module/flatmap'
+import takeUntil from 'flyd/module/takeuntil'
 import DOM from 'react-dom'
 import R from 'ramda'
 import css from 'index.css'
@@ -43,13 +45,29 @@ const DecOne = () => {
   }
 }
 
+const Merge = () => {
+  return {
+    title: 'AddOne',
+    ins: ['stream1', 'stream2'],
+    outs: {
+      merge
+    }
+  }
+}
+
+
 const initialState = {
   x: 0,
   y: 0,
   z: 1,
   width: window.innerWidth,
   height: window.innerHeight,
-  graph: [Header, AddOne(), DecOne()]
+  graph: [
+    {component: Header, x: 200, y: 200},
+    {component: AddOne(), x: 200, y: 500},
+    {component: DecOne(), x: 200, y: 800},
+    {component: Merge(), x: 200, y: 1100},
+  ]
 }
 
 // const arc =
@@ -80,9 +98,11 @@ const segments = (s) => (index, len) => {
 const outSegments = segments(0)
 const inSegments = segments(Math.PI)
 
-const Node = ({ins, outs, x, y}) => {
+const mouseDown = stream()
+const Node = ({index, ins, outs, x, y}) => {
   return (
-    <g transform={`translate(${x},${y})`}>
+    <g transform={`translate(${x},${y})`} className={css.node}>
+      <circle r={110} className={css.nodeContainer} onMouseDown={(e) => mouseDown(e, index)}/>
       <g transform="translate(-2)">
         {R.times((i) => <Arc key={`in-${i}`} r={100} a={inSegments(i, ins)} />, ins)}
       </g>
@@ -98,7 +118,8 @@ const Graph = ({x, y, z, width, height, graph}) => {
     <svg width={width} height={height}>
       <g transform={`matrix(${z}, 0, 0, ${z}, ${x}, ${y})`}>
         {graph.map((item, i) => {
-            return <Node ins={item.ins.length} outs={Object.keys(item.outs).length} x={150 + i * 210} y={200} />
+          const c = item.component
+          return <Node key={i} index={i} ins={c.ins.length} outs={Object.keys(c.outs).length} x={item.x} y={item.y} />
         })}
       </g>
     </svg>
@@ -135,15 +156,28 @@ const zoom$ = R.pipe(
   map(action('zoom'))
 )(wheel)
 
-//
-// if (e.ctrlKey) {
-//   var s = Math.exp(-e.deltaY/100);
-//   scale *= s;
-//   console.log("delta = " + e.deltaY);
-//   console.log("scale = " + scale);
-//   console.log("s = " + s);
-//
-// }
+const mouseMove = stream()
+const mouseUp = stream()
+
+window.addEventListener('mousemove', mouseMove)
+window.addEventListener('mouseup', mouseUp)
+
+const drag = flatMap((md, index) => {
+  const startX = md.offsetX
+  const startY = md.offsetY
+
+  return takeUntil(map((mm) => {
+    mm.preventDefault()
+
+    return {
+      left: mm.clientX - startX,
+      top: mm.clientY - startY,
+      index
+    }
+  }, mouseMove), mouseUp)
+}, mouseDown)
+
+
 
 const log = (msg) => map((e) => { console.log(msg, e); return e })
 const resize$ = R.pipe(
@@ -156,6 +190,8 @@ const reducer = (state, {type, payload}) => {
   switch (type) {
     case 'move':
       return {...state, x: state.x - payload[0], y: state.y - payload[1]}
+    case 'drag':
+      return {...state, x: state.x - payload[0], y: state.y - payload[1]}
     case 'zoom':
       return {...state, z: Math.max(state.z - payload/100, 0.1)}
     case 'resize':
@@ -165,10 +201,11 @@ const reducer = (state, {type, payload}) => {
   return state
 }
 
-const state$ = scan(reducer, initialState, mergeAll([move$, zoom$, resize$]))
+const drag$ = map(action('drag'), drag)
+
+const state$ = scan(reducer, initialState, mergeAll([move$, zoom$, resize$, drag$]))
 
 const render = (...state) =>
   DOM.render(Graph(...state), document.getElementById('root'))
 
 map(render, state$)
-map(console.log, state$)

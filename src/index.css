@@ -20,3 +20,11 @@ svg {
 .arc {
   fill: #303035;
 }
+
+.node:hover .nodeContainer {
+  stroke: red;
+}
+
+.nodeContainer {
+  fill: transparent;
+}
